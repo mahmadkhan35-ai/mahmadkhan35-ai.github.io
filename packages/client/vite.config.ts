@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url';
 const root = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig(({ command }) => {
-  // Dev always `/`. CI sets VITE_BASE=/<repo>/ for project Pages.
   const base = command === 'serve' ? '/' : process.env.VITE_BASE || '/';
 
   return {
@@ -25,7 +24,17 @@ export default defineConfig(({ command }) => {
     },
     build: {
       outDir: 'dist',
-      sourcemap: true,
+      sourcemap: false,
+      cssCodeSplit: false,
+      modulePreload: false,
+      // One JS file — avoids circular chunk deadlocks on GitHub Pages.
+      rollupOptions: {
+        output: {
+          inlineDynamicImports: true,
+          entryFileNames: 'assets/app.js',
+          assetFileNames: 'assets/[name][extname]',
+        },
+      },
     },
   };
 });

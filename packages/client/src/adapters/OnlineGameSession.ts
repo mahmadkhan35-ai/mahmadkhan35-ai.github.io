@@ -1,4 +1,3 @@
-import type { DataConnection } from 'peerjs';
 import {
   applyCommand,
   createDemoMatch,
@@ -27,12 +26,28 @@ export type OnlineStatus =
   | 'disconnected'
   | 'error';
 
-type PeerCtor = typeof import('peerjs').Peer;
-type PeerInstance = InstanceType<PeerCtor>;
+type PeerCtor = new (...args: any[]) => PeerInstance;
+
+type PeerInstance = {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  on(event: string, cb: (...args: any[]) => void): void;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  connect(id: string, options?: { reliable?: boolean }): DataConn;
+  destroy(): void;
+};
+
+type DataConn = {
+  open: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  on(event: string, cb: (...args: any[]) => void): void;
+  send(data: unknown): void;
+  close(): void;
+};
 
 async function loadPeer(): Promise<PeerCtor> {
+  // Keep a real dynamic import for types/bundlers, but production inlines it.
   const mod = await import('peerjs');
-  if (typeof mod.Peer === 'function') return mod.Peer;
+  if (typeof mod.Peer === 'function') return mod.Peer as unknown as PeerCtor;
   const d = mod.default as unknown;
   if (typeof d === 'function') return d as PeerCtor;
   if (
@@ -60,7 +75,7 @@ export class OnlineGameSession {
   private statusListeners = new Set<() => void>();
 
   private peer: PeerInstance | null = null;
-  private conn: DataConnection | null = null;
+  private conn: DataConn | null = null;
   private hostPlacements: FormationPlacement[] | null = null;
   private isHost = false;
 
@@ -134,9 +149,9 @@ export class OnlineGameSession {
     this.conn.send(msg);
   }
 
-  private bindConnection(conn: DataConnection): void {
+  private bindConnection(conn: DataConn): void {
     this.conn = conn;
-    conn.on('data', (raw) => {
+    conn.on('data', (raw: unknown) => {
       this.onPeerMessage(raw as PeerMessage);
     });
     conn.on('close', () => {
