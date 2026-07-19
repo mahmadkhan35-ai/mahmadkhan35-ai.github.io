@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import styles from './DeckBuilderView.module.css';
 import {
   DECK_COST_CAP,
@@ -29,19 +29,35 @@ function countUsed(map: Map<FormationSlotId, string>): Map<string, number> {
   return used;
 }
 
+function newDeckId(): string {
+  return `deck-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e4).toString(36)}`;
+}
+
 export function DeckBuilderView() {
   const cards = useAppStore((s) => s.cards);
   const decks = useAppStore((s) => s.decks);
+  const activeDeckId = useAppStore((s) => s.activeDeckId);
+  const setActiveDeckId = useAppStore((s) => s.setActiveDeckId);
   const saveDeck = useAppStore((s) => s.saveDeck);
-  const setView = useAppStore((s) => s.setView);
-  const starter = decks.find((d) => d.id === 'starter') ?? decks[0];
+  const deleteDeck = useAppStore((s) => s.deleteDeck);
 
-  const [name, setName] = useState(starter?.name ?? 'Моя колода');
+  const active = decks.find((d) => d.id === activeDeckId) ?? decks[0];
+  const [editingId, setEditingId] = useState(active?.id ?? 'starter');
+  const editing = decks.find((d) => d.id === editingId) ?? active;
+
+  const [name, setName] = useState(editing?.name ?? 'Моя колода');
   const [slotMap, setSlotMap] = useState(() =>
-    placementsToMap(starter?.placements ?? []),
+    placementsToMap(editing?.placements ?? []),
   );
   const [selectedSlot, setSelectedSlot] = useState<FormationSlot | null>(null);
   const [selectedPoolDef, setSelectedPoolDef] = useState<string | null>(null);
+
+  useEffect(() => {
+    const deck = decks.find((d) => d.id === editingId);
+    if (!deck) return;
+    setName(deck.name);
+    setSlotMap(placementsToMap(deck.placements));
+  }, [editingId, decks]);
 
   const owned = useMemo(() => new Map(cards.map((c) => [c.defId, c.count])), [cards]);
   const used = useMemo(() => countUsed(slotMap), [slotMap]);
@@ -52,6 +68,7 @@ export function DeckBuilderView() {
   );
   const cost = deckCost(placementsNow);
   const overBudget = cost > DECK_COST_CAP;
+  const canSave = filled >= totalSlots && !overBudget;
 
   const remainingFor = (defId: string) =>
     (owned.get(defId) ?? 0) - (used.get(defId) ?? 0);
@@ -67,7 +84,6 @@ export function DeckBuilderView() {
     setSlotMap((prev) => {
       const next = new Map(prev);
       const previous = next.get(slot.id);
-      // temporary remove to recalc remaining
       if (previous) next.delete(slot.id);
       const currentlyUsed = countUsed(next).get(defId) ?? 0;
       const maxOwned = owned.get(defId) ?? 0;
@@ -98,17 +114,39 @@ export function DeckBuilderView() {
     setSelectedSlot(slot);
   };
 
+  const buildDeck = (id: string): Deck => ({
+    id,
+    name: name.trim() || 'Моя колода',
+    placements: [...slotMap.entries()].map(([slotId, defId]) => ({ slotId, defId })),
+  });
+
   const onSave = () => {
-    const placements: FormationPlacement[] = [...slotMap.entries()].map(
-      ([slotId, defId]) => ({ slotId, defId }),
-    );
-    const deck: Deck = {
-      id: starter?.id ?? 'starter',
-      name,
-      placements,
-    };
-    saveDeck(deck);
-    setView('battle');
+    if (!canSave) return;
+    const deck = buildDeck(editingId);
+    saveDeck(deck, { makeActive: true });
+    setEditingId(deck.id);
+  };
+
+  const onSaveAsNew = () => {
+    if (!canSave) return;
+    const deck = buildDeck(newDeckId());
+    saveDeck(deck, { makeActive: true });
+    setEditingId(deck.id);
+  };
+
+  const onSaveAndBattle = () => {
+    if (!canSave) return;
+    const toSave = buildDeck(editingId);
+    saveDeck(toSave, { makeActive: true, startBattle: true });
+  };
+
+  const onDelete = () => {
+    if (editingId === 'starter') return;
+    if (!confirm('Удалить эту колоду?')) return;
+    deleteDeck(editingId);
+    const next = decks.find((d) => d.id !== editingId)?.id ?? 'starter';
+    setEditingId(next);
+    setActiveDeckId(next);
   };
 
   const backRank = FORMATION_SLOTS.filter((s) => s.homeRank === 0);
@@ -119,13 +157,34 @@ export function DeckBuilderView() {
       <div className={styles.head}>
         <h2>Сбор колоды</h2>
         <p>
-          Классическая расстановка: полный комплект из {totalSlots} фигур. Лимит стоимости колоды:{' '}
-          {DECK_COST_CAP}. Модификации занимают слот своей базовой роли.
+          Полный комплект из {totalSlots} фигур. Базовые карты бесплатны; очки тратятся на
+          модификации (у Якоря cost −3). Лимит колоды: {DECK_COST_CAP}.
         </p>
-        <label className={styles.name}>
-          Название
-          <input value={name} onChange={(e) => setName(e.target.value)} />
-        </label>
+
+        <div className={styles.deckBar}>
+          <label className={styles.name}>
+            Колода
+            <select
+              value={editingId}
+              onChange={(e) => {
+                setEditingId(e.target.value);
+                setActiveDeckId(e.target.value);
+              }}
+            >
+              {decks.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                  {d.id === activeDeckId ? ' · активная' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={styles.name}>
+            Название
+            <input value={name} onChange={(e) => setName(e.target.value)} />
+          </label>
+        </div>
+
         <p className={styles.count}>
           Слоты: {filled}/{totalSlots} · стоимость: {cost}/{DECK_COST_CAP}
           {overBudget ? ' — превышен лимит' : ''}
@@ -138,7 +197,7 @@ export function DeckBuilderView() {
             <div className={styles.rank}>
               {pawnRank.map((slot) => {
                 const defId = slotMap.get(slot.id);
-                const active = selectedSlot?.id === slot.id;
+                const isActive = selectedSlot?.id === slot.id;
                 const isDark = slot.file % 2 === 0;
                 return (
                   <button
@@ -147,7 +206,7 @@ export function DeckBuilderView() {
                     className={[
                       styles.cell,
                       isDark ? styles.dark : styles.light,
-                      active ? styles.cellActive : '',
+                      isActive ? styles.cellActive : '',
                       !defId ? styles.cellEmpty : '',
                     ]
                       .filter(Boolean)
@@ -168,7 +227,7 @@ export function DeckBuilderView() {
             <div className={styles.rank}>
               {backRank.map((slot) => {
                 const defId = slotMap.get(slot.id);
-                const active = selectedSlot?.id === slot.id;
+                const isActive = selectedSlot?.id === slot.id;
                 const isDark = slot.file % 2 === 1;
                 return (
                   <button
@@ -177,7 +236,7 @@ export function DeckBuilderView() {
                     className={[
                       styles.cell,
                       isDark ? styles.dark : styles.light,
-                      active ? styles.cellActive : '',
+                      isActive ? styles.cellActive : '',
                       !defId ? styles.cellEmpty : '',
                     ]
                       .filter(Boolean)
@@ -262,14 +321,30 @@ export function DeckBuilderView() {
         </div>
       </div>
 
-      <button
-        type="button"
-        className={styles.save}
-        onClick={onSave}
-        disabled={filled < totalSlots || overBudget}
-      >
-        Сохранить и к бою
-      </button>
+      <div className={styles.actions}>
+        <button type="button" className={styles.save} onClick={onSave} disabled={!canSave}>
+          Сохранить
+        </button>
+        <button type="button" className={styles.secondary} onClick={onSaveAsNew} disabled={!canSave}>
+          Сохранить как новую
+        </button>
+        <button
+          type="button"
+          className={styles.save}
+          onClick={onSaveAndBattle}
+          disabled={!canSave}
+        >
+          Сохранить и к бою
+        </button>
+        <button
+          type="button"
+          className={styles.danger}
+          onClick={onDelete}
+          disabled={editingId === 'starter'}
+        >
+          Удалить
+        </button>
+      </div>
     </section>
   );
 }

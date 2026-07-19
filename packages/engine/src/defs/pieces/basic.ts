@@ -43,7 +43,7 @@ export const pawnDef: PieceDefinition = {
   isBase: true,
   description:
     'Классическая пешка: на 1 вперёд (со старта на 2), бьёт по диагонали вперёд.',
-  cost: 1,
+  cost: 0,
   rarity: 'common',
   maxHp: 1,
   attack: 1,
@@ -70,7 +70,7 @@ export const skirmisherDef: PieceDefinition = {
   isBase: false,
   description:
     'Модификация пешки: ходит на 1 вперёд или по диагонали вперёд; атакует вперёд и по диагонали.',
-  cost: 2,
+  cost: 1,
   rarity: 'uncommon',
   maxHp: 1,
   attack: 1,
@@ -125,7 +125,7 @@ export const rookDef: PieceDefinition = {
   baseRole: 'rook',
   isBase: true,
   description: 'Классическая ладья: любое число клеток по горизонтали и вертикали.',
-  cost: 5,
+  cost: 0,
   rarity: 'common',
   maxHp: 1,
   attack: 1,
@@ -137,12 +137,19 @@ export const sprinterDef: PieceDefinition = {
   name: 'Спринтер',
   baseRole: 'rook',
   isBase: false,
-  description: 'Модификация ладьи: ортогональный ход не дальше 3 клеток.',
+  description:
+    'Модификация ладьи: ортогональный ход не дальше 3 клеток. Раз за партию может перепрыгнуть через соседнюю союзную фигуру на клетку сразу за ней.',
   cost: 3,
   rarity: 'uncommon',
   maxHp: 1,
   attack: 1,
   movement: [{ kind: 'slide', directions: ORTHO, maxRange: 3 }],
+  abilities: [
+    {
+      id: 'allyLeap',
+      description: 'Один раз: прыжок через соседнего союзника на пустую клетку за ним.',
+    },
+  ],
 };
 
 export const knightDef: PieceDefinition = {
@@ -151,7 +158,7 @@ export const knightDef: PieceDefinition = {
   baseRole: 'knight',
   isBase: true,
   description: 'Классический конь: ход буквой «Г», перепрыгивает фигуры.',
-  cost: 3,
+  cost: 0,
   rarity: 'common',
   maxHp: 1,
   attack: 1,
@@ -164,7 +171,7 @@ export const lancerDef: PieceDefinition = {
   baseRole: 'knight',
   isBase: false,
   description: 'Модификация коня: прыжок ровно на 2 по горизонтали/вертикали.',
-  cost: 3,
+  cost: 1,
   rarity: 'uncommon',
   maxHp: 1,
   attack: 1,
@@ -189,7 +196,7 @@ export const outriderDef: PieceDefinition = {
   isBase: false,
   description:
     'Модификация коня: обычный ход «Г». Один раз за партию может отступить назад по прямой как ладья на любое число клеток.',
-  cost: 4,
+  cost: 2,
   rarity: 'uncommon',
   maxHp: 1,
   attack: 1,
@@ -208,7 +215,7 @@ export const bishopDef: PieceDefinition = {
   baseRole: 'bishop',
   isBase: true,
   description: 'Классический слон: любое число клеток по диагонали.',
-  cost: 3,
+  cost: 0,
   rarity: 'common',
   maxHp: 1,
   attack: 1,
@@ -222,8 +229,8 @@ export const chaplainDef: PieceDefinition = {
   baseRole: 'bishop',
   isBase: false,
   description:
-    'Модификация слона: не атакует. Усиливает первую фигуру на каждой своей диагонали (луч блокируется фигурой). Усиленная фигура дополнительно ходит и бьёт как король вокруг себя.',
-  cost: 4,
+    'Модификация слона: не атакует. Усиливает первую союзную фигуру на каждой своей диагонали (луч блокируется любой фигурой). Усиленная фигура дополнительно ходит и бьёт как король вокруг себя.',
+  cost: 2,
   rarity: 'uncommon',
   maxHp: 1,
   attack: 0,
@@ -238,7 +245,7 @@ export const queenDef: PieceDefinition = {
   baseRole: 'queen',
   isBase: true,
   description: 'Классический ферзь: любой луч.',
-  cost: 9,
+  cost: 0,
   rarity: 'rare',
   maxHp: 1,
   attack: 1,
@@ -253,7 +260,7 @@ export const regentDef: PieceDefinition = {
   isBase: false,
   description:
     'Модификация ферзя: обычные ходы ферзя. Один раз за партию может телепортироваться на пустую клетку рядом со своим королём.',
-  cost: 10,
+  cost: 3,
   rarity: 'rare',
   maxHp: 1,
   attack: 1,
@@ -285,7 +292,7 @@ export const wardenDef: PieceDefinition = {
   baseRole: 'king',
   isBase: false,
   description: 'Модификация короля: шаг на 1 + прыжки коня.',
-  cost: 4,
+  cost: 3,
   rarity: 'rare',
   maxHp: 1,
   attack: 1,
@@ -293,6 +300,23 @@ export const wardenDef: PieceDefinition = {
     { kind: 'leap', offsets: ALL_DIRS },
     { kind: 'leap', offsets: KNIGHT_OFFSETS },
   ],
+};
+
+/** Не ходит; освобождает 3 очка бюджета колоды. */
+export const anchorDef: PieceDefinition = {
+  id: 'anchor',
+  name: 'Якорь',
+  baseRole: 'king',
+  isBase: false,
+  description:
+    'Модификация короля: не может ходить (и рокироваться). Даёт −3 к стоимости колоды — бюджет на остальные модификации.',
+  cost: -3,
+  rarity: 'rare',
+  maxHp: 1,
+  attack: 0,
+  cannotCapture: true,
+  immobile: true,
+  movement: [],
 };
 
 export const PIECE_DEFS = [
@@ -310,4 +334,5 @@ export const PIECE_DEFS = [
   regentDef,
   kingDef,
   wardenDef,
+  anchorDef,
 ] as const;

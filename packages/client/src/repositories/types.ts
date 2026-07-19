@@ -24,6 +24,7 @@ export interface CollectionRepository {
   listDecks(): Deck[];
   getDeck(id: string): Deck | null;
   saveDeck(deck: Deck): void;
+  deleteDeck(id: string): void;
   resetToStarter(): void;
 }
 

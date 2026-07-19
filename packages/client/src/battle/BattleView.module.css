@@ -19,8 +19,27 @@
   font-weight: 600;
 }
 
+.modeSwitch {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.55rem;
+}
+
+.modeSwitch button {
+  background: var(--bg2);
+  border: 1px solid var(--accent-dim);
+  color: var(--ink);
+  padding: 0.35rem 0.75rem;
+  border-radius: 2px;
+}
+
+.modeActive {
+  border-color: var(--accent) !important;
+  background: color-mix(in srgb, var(--accent) 22%, var(--bg2)) !important;
+}
+
 .status {
-  margin: 0.25rem 0 0;
+  margin: 0.35rem 0 0;
   color: var(--muted);
 }
 
@@ -41,6 +60,166 @@
 .restart:hover {
   background: color-mix(in srgb, var(--accent) 22%, var(--bg2));
   border-color: var(--accent);
+}
+
+.lobby {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--accent-dim) 55%, transparent);
+  background: color-mix(in srgb, var(--bg2) 90%, transparent);
+  max-width: 40rem;
+}
+
+.lobbyField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+  max-width: 280px;
+}
+
+.lobbyField select,
+.joinRow input {
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg0);
+  border: 1px solid var(--accent-dim);
+  padding: 0.45rem 0.6rem;
+  border-radius: 2px;
+}
+
+.lobbyHint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.lobbyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.primary {
+  background: var(--accent);
+  color: var(--bg0);
+  border: none;
+  padding: 0.55rem 1rem;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+.primary:disabled {
+  opacity: 0.45;
+}
+
+.joinRow {
+  display: flex;
+  gap: 0.4rem;
+}
+
+.joinRow button {
+  background: var(--bg2);
+  border: 1px solid var(--accent-dim);
+  color: var(--ink);
+  padding: 0.45rem 0.8rem;
+  border-radius: 2px;
+}
+
+.invite {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.invite p {
+  margin: 0;
+}
+
+.inviteUrl {
+  display: block;
+  padding: 0.5rem 0.65rem;
+  background: var(--bg0);
+  border: 1px solid var(--accent-dim);
+  font-size: 0.82rem;
+  word-break: break-all;
+}
+
+.invite button {
+  align-self: flex-start;
+  background: var(--bg2);
+  border: 1px solid var(--accent-dim);
+  color: var(--ink);
+  padding: 0.45rem 0.8rem;
+  border-radius: 2px;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 16rem);
+  gap: 1.25rem;
+  align-items: start;
+}
+
+@media (max-width: 840px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.history {
+  background: color-mix(in srgb, var(--bg2) 88%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent-dim) 55%, transparent);
+  padding: 0.85rem 0.9rem;
+  max-height: min(70vh, 36rem);
+  overflow: auto;
+}
+
+.historyTitle {
+  margin: 0 0 0.65rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.historyEmpty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.historyList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.historyItem {
+  display: grid;
+  grid-template-columns: 2.2rem 1fr;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+  line-height: 1.35;
+}
+
+.historyMeta {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.historyWhite {
+  color: var(--ink);
+}
+
+.historyBlack {
+  color: color-mix(in srgb, var(--ink) 72%, var(--muted));
 }
 
 .hint {

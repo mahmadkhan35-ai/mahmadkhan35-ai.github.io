@@ -4,7 +4,9 @@ import {
   createMatch,
   createPieceInstance,
   createRectBoard,
+  getBuffedPieceIds,
   getLegalMoves,
+  getPieceDefinition,
   resetPieceIdCounter,
   withTileOverrides,
 } from '../src/index.js';
@@ -265,5 +267,106 @@ describe('applyCommand basics', () => {
       to: { x: 1, y: 1 },
     });
     expect(result.ok).toBe(false);
+  });
+});
+
+describe('chaplain line buff', () => {
+  it('buffs allies on diagonal but not enemies', () => {
+    const state = blankMatch([
+      createPieceInstance('chaplain', 'white', { x: 2, y: 2 }, 'ch'),
+      createPieceInstance('pawn', 'white', { x: 4, y: 4 }, 'pw'),
+      createPieceInstance('pawn', 'black', { x: 0, y: 4 }, 'pb'),
+      createPieceInstance('king', 'white', { x: 7, y: 0 }, 'kw'),
+      createPieceInstance('king', 'black', { x: 7, y: 7 }, 'kb'),
+    ]);
+    const buffed = getBuffedPieceIds(state);
+    expect(buffed.has('pw')).toBe(true);
+    expect(buffed.has('pb')).toBe(false);
+    expect(buffed.has('ch')).toBe(false);
+
+    // Ally pawn gains king-aura (e.g. sideways)
+    const allyMoves = getLegalMoves(state, { x: 4, y: 4 });
+    expect(allyMoves.some((m) => m.to.x === 5 && m.to.y === 4)).toBe(true);
+
+    // Enemy on other diagonal does not gain aura
+    const enemyState = {
+      ...state,
+      activePlayer: 'black' as const,
+    };
+    const enemyMoves = getLegalMoves(enemyState, { x: 0, y: 4 });
+    expect(enemyMoves.some((m) => m.to.x === 1 && m.to.y === 4)).toBe(false);
+  });
+});
+
+describe('castling', () => {
+  it('allows kingside and queenside when path clear', () => {
+    const state = blankMatch([
+      createPieceInstance('king', 'white', { x: 4, y: 0 }, 'kw'),
+      createPieceInstance('rook', 'white', { x: 7, y: 0 }, 'rh'),
+      createPieceInstance('rook', 'white', { x: 0, y: 0 }, 'ra'),
+      createPieceInstance('king', 'black', { x: 4, y: 7 }, 'kb'),
+    ]);
+    const moves = getLegalMoves(state, { x: 4, y: 0 });
+    expect(moves.some((m) => m.castle === 'kingside' && m.to.x === 6)).toBe(true);
+    expect(moves.some((m) => m.castle === 'queenside' && m.to.x === 2)).toBe(true);
+
+    const result = applyCommand(state, {
+      type: 'move',
+      from: { x: 4, y: 0 },
+      to: { x: 6, y: 0 },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.pieces.find((p) => p.id === 'kw')?.pos).toEqual({ x: 6, y: 0 });
+    expect(result.state.pieces.find((p) => p.id === 'rh')?.pos).toEqual({ x: 5, y: 0 });
+    expect(result.events.some((e) => e.type === 'Castled' && e.side === 'kingside')).toBe(true);
+  });
+
+  it('blocks castling when path occupied', () => {
+    const state = blankMatch([
+      createPieceInstance('king', 'white', { x: 4, y: 0 }, 'kw'),
+      createPieceInstance('rook', 'white', { x: 7, y: 0 }, 'rh'),
+      createPieceInstance('knight', 'white', { x: 5, y: 0 }, 'n'),
+      createPieceInstance('king', 'black', { x: 4, y: 7 }, 'kb'),
+    ]);
+    const moves = getLegalMoves(state, { x: 4, y: 0 });
+    expect(moves.some((m) => m.castle === 'kingside')).toBe(false);
+  });
+});
+
+describe('sprinter allyLeap', () => {
+  it('can leap over an adjacent ally once', () => {
+    const state = blankMatch([
+      createPieceInstance('sprinter', 'white', { x: 0, y: 0 }, 'sp'),
+      createPieceInstance('pawn', 'white', { x: 0, y: 1 }, 'pw'),
+      createPieceInstance('king', 'white', { x: 4, y: 0 }, 'kw'),
+      createPieceInstance('king', 'black', { x: 4, y: 7 }, 'kb'),
+    ]);
+    const moves = getLegalMoves(state, { x: 0, y: 0 });
+    expect(moves.some((m) => m.abilityId === 'allyLeap' && m.to.x === 0 && m.to.y === 2)).toBe(
+      true,
+    );
+    const result = applyCommand(state, {
+      type: 'move',
+      from: { x: 0, y: 0 },
+      to: { x: 0, y: 2 },
+      abilityId: 'allyLeap',
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.state.pieces.find((p) => p.id === 'sp')?.pos).toEqual({ x: 0, y: 2 });
+    expect(result.state.pieces.find((p) => p.id === 'sp')?.abilitiesUsed.allyLeap).toBe(true);
+  });
+});
+
+describe('anchor king', () => {
+  it('has no legal moves and negative cost', () => {
+    expect(getPieceDefinition('anchor').cost).toBe(-3);
+    const state = blankMatch([
+      createPieceInstance('anchor', 'white', { x: 4, y: 0 }, 'kw'),
+      createPieceInstance('rook', 'white', { x: 7, y: 0 }, 'rh'),
+      createPieceInstance('king', 'black', { x: 4, y: 7 }, 'kb'),
+    ]);
+    expect(getLegalMoves(state, { x: 4, y: 0 })).toHaveLength(0);
   });
 });

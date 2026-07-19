@@ -4,6 +4,7 @@ import type { Deck, OwnedCard } from './types.js';
 export const STARTER_COLLECTION: OwnedCard[] = [
   { defId: 'king', count: 1 },
   { defId: 'warden', count: 1 },
+  { defId: 'anchor', count: 1 },
   { defId: 'queen', count: 1 },
   { defId: 'regent', count: 1 },
   { defId: 'rook', count: 2 },

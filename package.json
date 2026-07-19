@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "pnpm --filter @chessforge/engine build && pnpm --filter @chessforge/ai build && pnpm --filter @chessforge/client dev",
     "build": "pnpm --filter @chessforge/engine build && pnpm --filter @chessforge/ai build && pnpm --filter @chessforge/client build",
-    "test": "pnpm --filter @chessforge/engine test",
+    "build:pages": "pnpm --filter @chessforge/engine build && pnpm --filter @chessforge/ai build && VITE_BASE=/${npm_package_name}/ pnpm --filter @chessforge/client build",
+    "test": "pnpm --filter @chessforge/engine test && pnpm --filter @chessforge/ai test",
     "typecheck": "pnpm --filter @chessforge/engine build && pnpm --filter @chessforge/ai build && pnpm --filter @chessforge/client typecheck"
   },
   "engines": {

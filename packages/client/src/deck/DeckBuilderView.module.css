@@ -233,3 +233,54 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+.deckBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  align-items: center;
+}
+
+.secondary {
+  background: var(--bg2);
+  color: var(--ink);
+  border: 1px solid var(--accent-dim);
+  padding: 0.65rem 1.1rem;
+  border-radius: 2px;
+  font-weight: 600;
+}
+
+.secondary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.danger {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent);
+  padding: 0.65rem 1.1rem;
+  border-radius: 2px;
+}
+
+.danger:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.name select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--bg2);
+  border: 1px solid var(--accent-dim);
+  padding: 0.45rem 0.6rem;
+  border-radius: 2px;
+}
+

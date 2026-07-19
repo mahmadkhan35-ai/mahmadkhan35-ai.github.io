@@ -3,7 +3,7 @@ import type { Coord, PlayerId } from '../board/types.js';
 export type TileId = string;
 export type PieceDefId = string;
 export type PieceRole = 'king' | 'queen' | 'rook' | 'bishop' | 'knight' | 'pawn';
-export type AbilityId = 'retreat' | 'royalWarp';
+export type AbilityId = 'retreat' | 'royalWarp' | 'allyLeap';
 
 export type TileDefinition = {
   id: TileId;
@@ -65,6 +65,8 @@ export type PieceDefinition = {
   splitCapture?: boolean;
   /** If true, piece never generates capture moves. */
   cannotCapture?: boolean;
+  /** If true, piece never generates legal moves (even from buffs / castling). */
+  immobile?: boolean;
   /**
    * Buffs the first friendly/enemy? piece on each slide ray (diagonal for bishop).
    * Buff grants king-step moves/attacks.
@@ -129,5 +131,5 @@ export type MatchState = {
   rngStep: number;
 };
 
-/** Soft cap for a fully filled classic formation. */
-export const DECK_COST_CAP = 40;
+/** Soft cap for deck: only modifications spend budget; bases are free. */
+export const DECK_COST_CAP = 10;

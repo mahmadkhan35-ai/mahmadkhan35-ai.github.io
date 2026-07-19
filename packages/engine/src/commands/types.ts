@@ -7,6 +7,16 @@ export type GameCommand =
 
 export type GameEvent =
   | { type: 'Moved'; pieceId: string; from: Coord; to: Coord; abilityId?: AbilityId }
+  | {
+      type: 'Castled';
+      side: 'kingside' | 'queenside';
+      kingId: string;
+      rookId: string;
+      kingFrom: Coord;
+      kingTo: Coord;
+      rookFrom: Coord;
+      rookTo: Coord;
+    }
   | { type: 'Damaged'; pieceId: string; byPieceId: string; at: Coord; hpLeft: number }
   | { type: 'Captured'; pieceId: string; byPieceId: string; at: Coord }
   | { type: 'Teleported'; pieceId: string; from: Coord; to: Coord; tileId: string }

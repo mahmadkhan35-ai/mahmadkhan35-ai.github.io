@@ -5,7 +5,11 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 
+/** GitHub Pages project site needs `/repo-name/`; local/preview uses `/`. */
+const base = process.env.VITE_BASE || '/';
+
 export default defineConfig({
+  base,
   plugins: [react()],
   resolve: {
     alias: {
@@ -16,5 +20,9 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+  },
+  build: {
+    outDir: 'dist',
+    sourcemap: true,
   },
 });

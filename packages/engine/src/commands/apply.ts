@@ -207,49 +207,86 @@ export function applyCommand(state: MatchState, command: GameCommand): ApplyResu
       });
     }
 
-    let moved = true;
-
-    if (chosen.captures && chosen.targetPieceId) {
-      const target = next.pieces.find((p) => p.id === chosen.targetPieceId);
-      if (target) {
-        const atk = getPieceDefinition(piece.defId).attack;
-        target.hp -= atk;
-        if (target.hp <= 0) {
-          events.push({
-            type: 'Captured',
-            pieceId: target.id,
-            byPieceId: piece.id,
-            at: { ...command.to },
-          });
-          destroyPiece(next, target.id, events, 'capture');
-        } else {
-          events.push({
-            type: 'Damaged',
-            pieceId: target.id,
-            byPieceId: piece.id,
-            at: { ...command.to },
-            hpLeft: target.hp,
-          });
-          // Non-lethal strike: attacker stays put
-          moved = false;
-        }
+    if (chosen.castle) {
+      const rank = piece.pos.y;
+      const rookFromX = chosen.castle === 'kingside' ? 7 : 0;
+      const rookToX = chosen.castle === 'kingside' ? 5 : 3;
+      const rook = next.pieces.find(
+        (p) =>
+          p.owner === piece.owner &&
+          getPieceDefinition(p.defId).baseRole === 'rook' &&
+          p.pos.y === rank &&
+          p.pos.x === rookFromX &&
+          !p.hasMoved,
+      );
+      if (!rook) {
+        return { ok: false, code: 'illegal', message: 'Castling rook not available' };
       }
-    }
 
-    if (moved) {
-      const from = { ...piece.pos };
+      const kingFrom = { ...piece.pos };
+      const rookFrom = { ...rook.pos };
       piece.pos = { ...command.to };
       piece.hasMoved = true;
+      rook.pos = { x: rookToX, y: rank };
+      rook.hasMoved = true;
+
       events.push({
-        type: 'Moved',
-        pieceId: piece.id,
-        from,
-        to: { ...command.to },
-        ...(chosen.abilityId !== undefined ? { abilityId: chosen.abilityId } : {}),
+        type: 'Castled',
+        side: chosen.castle,
+        kingId: piece.id,
+        rookId: rook.id,
+        kingFrom,
+        kingTo: { ...command.to },
+        rookFrom,
+        rookTo: { ...rook.pos },
       });
       applyEnterTile(next, piece, events);
+      applyEnterTile(next, rook, events);
     } else {
-      piece.hasMoved = true;
+      let moved = true;
+
+      if (chosen.captures && chosen.targetPieceId) {
+        const target = next.pieces.find((p) => p.id === chosen.targetPieceId);
+        if (target) {
+          const atk = getPieceDefinition(piece.defId).attack;
+          target.hp -= atk;
+          if (target.hp <= 0) {
+            events.push({
+              type: 'Captured',
+              pieceId: target.id,
+              byPieceId: piece.id,
+              at: { ...command.to },
+            });
+            destroyPiece(next, target.id, events, 'capture');
+          } else {
+            events.push({
+              type: 'Damaged',
+              pieceId: target.id,
+              byPieceId: piece.id,
+              at: { ...command.to },
+              hpLeft: target.hp,
+            });
+            // Non-lethal strike: attacker stays put
+            moved = false;
+          }
+        }
+      }
+
+      if (moved) {
+        const from = { ...piece.pos };
+        piece.pos = { ...command.to };
+        piece.hasMoved = true;
+        events.push({
+          type: 'Moved',
+          pieceId: piece.id,
+          from,
+          to: { ...command.to },
+          ...(chosen.abilityId !== undefined ? { abilityId: chosen.abilityId } : {}),
+        });
+        applyEnterTile(next, piece, events);
+      } else {
+        piece.hasMoved = true;
+      }
     }
 
     maybeGameOver(next, events);

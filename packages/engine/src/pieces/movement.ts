@@ -17,6 +17,7 @@ export type LegalMove = {
   captures: boolean;
   targetPieceId?: string;
   abilityId?: AbilityId;
+  castle?: 'kingside' | 'queenside';
 };
 
 const KING_OFFSETS: Coord[] = [
@@ -190,7 +191,10 @@ function getLineBuffTargets(state: MatchState, buffer: PieceInstance): PieceInst
       if (!isPassable(state.board, pos)) break;
       const hit = pieceAt(state, pos);
       if (hit) {
-        if (hit.id !== buffer.id) targets.push(hit);
+        // Chaplain-style buffs only empower allies
+        if (hit.owner === buffer.owner && hit.id !== buffer.id) {
+          targets.push(hit);
+        }
         break;
       }
     }
@@ -218,6 +222,51 @@ function addKingAuraMoves(state: MatchState, piece: PieceInstance, out: LegalMov
   }
 }
 
+function addCastlingMoves(state: MatchState, piece: PieceInstance, out: LegalMove[]): void {
+  if (!isKingRole(piece.defId) || piece.hasMoved) return;
+  if (piece.pos.x !== 4) return; // classic e-file
+
+  const rank = piece.pos.y;
+  const sides: Array<{
+    side: 'kingside' | 'queenside';
+    rookX: number;
+    kingTo: number;
+    path: number[];
+  }> = [
+    { side: 'kingside', rookX: 7, kingTo: 6, path: [5, 6] },
+    { side: 'queenside', rookX: 0, kingTo: 2, path: [1, 2, 3] },
+  ];
+
+  for (const s of sides) {
+    const rook = state.pieces.find(
+      (p) =>
+        p.owner === piece.owner &&
+        getPieceDefinition(p.defId).baseRole === 'rook' &&
+        p.pos.y === rank &&
+        p.pos.x === s.rookX &&
+        !p.hasMoved,
+    );
+    if (!rook) continue;
+
+    let clear = true;
+    for (const x of s.path) {
+      const pos = { x, y: rank };
+      if (!isPassable(state.board, pos) || pieceAt(state, pos)) {
+        clear = false;
+        break;
+      }
+    }
+    if (!clear) continue;
+
+    out.push({
+      from: { ...piece.pos },
+      to: { x: s.kingTo, y: rank },
+      captures: false,
+      castle: s.side,
+    });
+  }
+}
+
 function addAbilityMoves(state: MatchState, piece: PieceInstance, out: LegalMove[]): void {
   const def = getPieceDefinition(piece.defId);
   if (!def.abilities) return;
@@ -226,7 +275,6 @@ function addAbilityMoves(state: MatchState, piece: PieceInstance, out: LegalMove
     if (piece.abilitiesUsed[ability.id]) continue;
 
     if (ability.id === 'retreat') {
-      // Backward rook slide (negative facing direction)
       const backDir = { x: 0, y: -facingSign(piece.owner) };
       for (let step = 1; step <= 8; step++) {
         const to = {
@@ -251,6 +299,30 @@ function addAbilityMoves(state: MatchState, piece: PieceInstance, out: LegalMove
         out.push({ from: piece.pos, to, captures: false, abilityId: 'royalWarp' });
       }
     }
+
+    if (ability.id === 'allyLeap') {
+      for (const dir of [
+        { x: 1, y: 0 },
+        { x: -1, y: 0 },
+        { x: 0, y: 1 },
+        { x: 0, y: -1 },
+      ]) {
+        const mid = { x: piece.pos.x + dir.x, y: piece.pos.y + dir.y };
+        const land = { x: piece.pos.x + dir.x * 2, y: piece.pos.y + dir.y * 2 };
+        if (!inBounds(mid, state.board.width, state.board.height)) continue;
+        if (!inBounds(land, state.board.width, state.board.height)) continue;
+        if (!isPassable(state.board, mid) || !isPassable(state.board, land)) continue;
+        const jumpee = pieceAt(state, mid);
+        if (!jumpee || jumpee.owner !== piece.owner) continue;
+        if (pieceAt(state, land)) continue;
+        out.push({
+          from: { ...piece.pos },
+          to: land,
+          captures: false,
+          abilityId: 'allyLeap',
+        });
+      }
+    }
   }
 }
 
@@ -258,7 +330,7 @@ function dedupeMoves(moves: LegalMove[]): LegalMove[] {
   const seen = new Set<string>();
   const out: LegalMove[] = [];
   for (const m of moves) {
-    const key = `${m.from.x},${m.from.y}->${m.to.x},${m.to.y}:${m.captures}:${m.abilityId ?? ''}`;
+    const key = `${m.from.x},${m.from.y}->${m.to.x},${m.to.y}:${m.captures}:${m.abilityId ?? ''}:${m.castle ?? ''}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(m);
@@ -274,6 +346,8 @@ export function getLegalMovesForPiece(
   if (piece.owner !== state.activePlayer) return [];
 
   const def = getPieceDefinition(piece.defId);
+  if (def.immobile) return [];
+
   const moves: LegalMove[] = [];
   const captureMode = def.cannotCapture ? 'quiet' : 'both';
 
@@ -297,13 +371,21 @@ export function getLegalMovesForPiece(
   }
 
   addAbilityMoves(state, piece, moves);
+  addCastlingMoves(state, piece, moves);
 
   const buffed = getBuffedPieceIds(state);
   if (buffed.has(piece.id)) {
     addKingAuraMoves(state, piece, moves);
   }
 
-  return dedupeMoves(applyMudCap(state, piece, moves));
+  // Castling is exempt from mud distance cap (king jumps 2)
+  const capped = applyMudCap(
+    state,
+    piece,
+    moves.filter((m) => !m.castle),
+  );
+  const castles = moves.filter((m) => m.castle);
+  return dedupeMoves([...capped, ...castles]);
 }
 
 export function getAllLegalMoves(state: MatchState): LegalMove[] {

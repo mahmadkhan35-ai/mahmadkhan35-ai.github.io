@@ -20,6 +20,7 @@ const TILE_MARK: Record<string, string> = {
 const ABILITY_LABEL: Record<string, string> = {
   retreat: 'Отступление',
   royalWarp: 'Телепорт к королю',
+  allyLeap: 'Прыжок через союзника',
 };
 
 export function BoardView() {
@@ -28,13 +29,19 @@ export function BoardView() {
   const setSelected = useAppStore((s) => s.setSelected);
   const submitMove = useAppStore((s) => s.submitMove);
   const session = useAppStore((s) => s.session);
+  const online = useAppStore((s) => s.online);
+  const battleMode = useAppStore((s) => s.battleMode);
+  const canControl = useAppStore((s) => s.canControl);
   const [hovered, setHovered] = useState<Coord | null>(null);
 
-  const legal = selected ? session.getLegalMovesFrom(selected) : [];
+  const activeSession = battleMode === 'online' ? online : session;
+  const myColor = battleMode === 'online' ? online.getMyColor() : 'white';
+  const legal = selected ? activeSession.getLegalMovesFrom(selected) : [];
   const legalMap = new Map(legal.map((m) => [`${m.to.x},${m.to.y}`, m]));
 
   const onCellClick = (pos: Coord) => {
-    if (state.phase !== 'play' || state.activePlayer !== 'white') return;
+    if (state.phase !== 'play') return;
+    if (!myColor || state.activePlayer !== myColor) return;
 
     const move = legalMap.get(`${pos.x},${pos.y}`);
     if (selected && move) {
@@ -43,7 +50,7 @@ export function BoardView() {
     }
 
     const piece = state.pieces.find((p) => p.pos.x === pos.x && p.pos.y === pos.y);
-    if (piece && piece.owner === 'white') {
+    if (piece && canControl(piece.owner)) {
       setSelected(pos);
       return;
     }

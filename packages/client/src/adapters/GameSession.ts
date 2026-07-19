@@ -1,7 +1,6 @@
-import { chooseCommand } from '@chessforge/ai';
+import { buildAiDeck, chooseCommand } from '@chessforge/ai';
 import {
   applyCommand,
-  classicBasePlacements,
   createDemoMatch,
   createMatchFromPlacements,
   getLegalMoves,
@@ -20,12 +19,10 @@ export type GameSessionListener = (snapshot: {
   lastError: string | null;
 }) => void;
 
-export function createMatchFromDeck(playerDeck: Deck, seed = 7): MatchState {
-  return createMatchFromPlacements(
-    playerDeck.placements,
-    classicBasePlacements(),
-    seed,
-  );
+export function createMatchFromDeck(playerDeck: Deck, seed = Date.now()): MatchState {
+  // Mix seed so AI deck and board seed both vary between matches
+  const aiSeed = (seed ^ 0x9e3779b9) >>> 0;
+  return createMatchFromPlacements(playerDeck.placements, buildAiDeck(aiSeed), seed);
 }
 
 /**
@@ -91,7 +88,7 @@ export class GameSession {
 
   private async runAi(): Promise<void> {
     this.aiBusy = true;
-    await new Promise((r) => setTimeout(r, 350));
+    await new Promise((r) => setTimeout(r, 280));
     if (this.state.phase !== 'play' || this.state.activePlayer !== 'black') {
       this.aiBusy = false;
       return;

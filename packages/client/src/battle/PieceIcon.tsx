@@ -209,6 +209,19 @@ function Warden({ owner }: { owner: PlayerId }) {
   );
 }
 
+/** Immobile king — heavy base, no cross. */
+function Anchor({ owner }: { owner: PlayerId }) {
+  const c = colors(owner);
+  return (
+    <Base owner={owner}>
+      <path d="M18 12h9v4l3 3v4H15v-4l3-3z" />
+      <path d="M14 24h17v6c0 4-3.5 7-8.5 7S14 34 14 30z" fill={c.accent} stroke={c.stroke} />
+      <path d="M11 38.5h23v3.5H11z" />
+      <path d="M22.5 27v8" stroke={c.stroke} fill="none" />
+    </Base>
+  );
+}
+
 const ICONS: Record<string, (props: { owner: PlayerId }) => ReactElement> = {
   pawn: Pawn,
   skirmisher: Skirmisher,
@@ -224,6 +237,7 @@ const ICONS: Record<string, (props: { owner: PlayerId }) => ReactElement> = {
   regent: Regent,
   king: King,
   warden: Warden,
+  anchor: Anchor,
 };
 
 export function PieceIcon({ defId, owner, className }: PieceIconProps) {
