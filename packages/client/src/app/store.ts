@@ -12,6 +12,32 @@ import {
 export type AppView = 'battle' | 'collection' | 'deck' | 'library';
 export type BattleMode = 'ai' | 'online';
 
+export type LastMoveHighlight = {
+  from: Coord;
+  to: Coord;
+};
+
+function lastMoveFromEvents(events: GameEvent[]): LastMoveHighlight | null {
+  let from: Coord | null = null;
+  let to: Coord | null = null;
+  for (const e of events) {
+    if (e.type === 'Moved') {
+      from = e.from;
+      to = e.to;
+    } else if (e.type === 'Castled') {
+      from = e.kingFrom;
+      to = e.kingTo;
+    } else if (e.type === 'Teleported') {
+      if (from) to = e.to;
+      else {
+        from = e.from;
+        to = e.to;
+      }
+    }
+  }
+  return from && to ? { from, to } : null;
+}
+
 type AppStore = {
   view: AppView;
   setView: (view: AppView) => void;
@@ -22,6 +48,7 @@ type AppStore = {
   state: MatchState;
   events: GameEvent[];
   moveHistory: MoveHistoryEntry[];
+  lastMove: LastMoveHighlight | null;
   lastError: string | null;
   selected: Coord | null;
   setSelected: (c: Coord | null) => void;
@@ -70,11 +97,13 @@ export const useAppStore = create<AppStore>((set, get) => {
     const { moveHistory } = get();
     const realPlyCount = moveHistory.filter(isPlyEntry).length;
     const appended = formatEventsToHistory(events, state, realPlyCount + 1);
+    const move = lastMoveFromEvents(events);
     set({
       state,
       events,
       lastError,
       moveHistory: appended.length ? [...moveHistory, ...appended] : moveHistory,
+      ...(move ? { lastMove: move } : {}),
     });
   };
 
@@ -102,6 +131,7 @@ export const useAppStore = create<AppStore>((set, get) => {
           battleMode,
           selected: null,
           moveHistory: [],
+          lastMove: null,
           lastError: null,
           state: s.getState(),
         });
@@ -111,6 +141,7 @@ export const useAppStore = create<AppStore>((set, get) => {
         battleMode,
         selected: null,
         moveHistory: [],
+        lastMove: null,
         lastError: null,
         state: o.getState(),
       });
@@ -120,6 +151,7 @@ export const useAppStore = create<AppStore>((set, get) => {
     state: session.getState(),
     events: [],
     moveHistory: [],
+    lastMove: null,
     lastError: null,
     selected: null,
     setSelected: (selected) => set({ selected }),
@@ -162,12 +194,18 @@ export const useAppStore = create<AppStore>((set, get) => {
       const { repo: r, activeDeckId, session: s, battleMode, online: o } = get();
       if (battleMode === 'online') {
         o.disconnect();
-        set({ selected: null, moveHistory: [], lastError: null, state: o.getState() });
+        set({
+          selected: null,
+          moveHistory: [],
+          lastMove: null,
+          lastError: null,
+          state: o.getState(),
+        });
         return;
       }
       const deck = r.getDeck(activeDeckId) ?? undefined;
       s.restart(deck ?? undefined);
-      set({ selected: null, moveHistory: [], state: s.getState() });
+      set({ selected: null, moveHistory: [], lastMove: null, state: s.getState() });
     },
     saveDeck: (deck, opts) => {
       repo.saveDeck(deck);
@@ -183,6 +221,7 @@ export const useAppStore = create<AppStore>((set, get) => {
         if (battleMode === 'ai') {
           s.restart(deck);
           patch.moveHistory = [];
+          patch.lastMove = null;
           patch.state = s.getState();
         }
         patch.view = 'battle';

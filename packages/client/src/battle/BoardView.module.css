@@ -145,6 +145,14 @@
   z-index: 1;
 }
 
+.lastMove {
+  background-color: color-mix(in srgb, var(--accent) 38%, var(--light-sq)) !important;
+}
+
+.dark.lastMove {
+  background-color: color-mix(in srgb, var(--accent) 42%, var(--dark-sq)) !important;
+}
+
 .canMove::after {
   content: '';
   position: absolute;
